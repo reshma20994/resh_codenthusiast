@@ -1,0 +1,251 @@
+import os
+
+class Book:
+    def __init__(self, id, title, author, category, available=True):
+        self.id = id
+        self.title = title
+        self.author = author
+        self.category = category
+        self.available = available
+
+    def is_available(self):
+        return self.available
+
+    def borrow(self):
+        if self.available:
+            self.available = False
+            return "Book borrowed successfully."
+        return "Book is not available."
+
+    def return_book(self):
+        self.available = True
+        return "Book returned successfully."
+
+    def to_line(self):
+        return f"{self.id}|{self.title}|{self.author}|{self.category}|{self.available}\n"
+
+    @staticmethod
+    def from_line(line):
+        id, title, author, category, available = line.strip().split('|')
+        return Book(id, title, author, category, available == 'True')
+
+
+class User:
+    def __init__(self, name, user_id, password, borrowed_books=None):
+        self.name = name
+        self.user_id = user_id
+        self.password = password
+        self.borrowed_books = borrowed_books if borrowed_books else []
+
+    def borrow_book(self, book, library):
+        result = library.borrow_book(book)
+        if result == "Book borrowed successfully.":
+            self.borrowed_books.append(book.id)
+        print(f"{self.name}: {result}")
+
+    def return_book(self, book, library):
+        if book.id in self.borrowed_books:
+            result = library.return_book(book)
+            self.borrowed_books.remove(book.id)
+            print(f"{self.name}: {result}")
+        else:
+            print(f"{self.name}: You didn’t borrow this book.")
+
+    def to_line(self):
+        borrowed = ','.join(self.borrowed_books)
+        return f"{self.user_id}|{self.name}|{self.password}|{borrowed}\n"
+
+    @staticmethod
+    def from_line(line):
+        parts = line.strip().split('|')
+        user_id, name, password = parts[:3]
+        borrowed_books = parts[3].split(',') if len(parts) > 3 and parts[3] else []
+        return User(name, user_id, password, borrowed_books)
+
+
+class Library:
+    def __init__(self, books_file='books.txt', users_file='users.txt'):
+        self.books_file = books_file
+        self.users_file = users_file
+        self.book_list = []
+        self.user_list = []
+        self.load_books()
+        self.load_users()
+
+    def add_book(self, book):
+        if not any(b.id == book.id for b in self.book_list):
+            self.book_list.append(book)
+            self.save_books()
+
+    def add_user(self, user):
+        if not any(u.user_id == user.user_id for u in self.user_list):
+            self.user_list.append(user)
+            self.save_users()
+
+    def borrow_book(self, book):
+        for b in self.book_list:
+            if b.id == book.id and b.is_available():
+                msg = b.borrow()
+                self.save_books()
+                return msg
+        return "Book not available"
+
+    def return_book(self, book):
+        for b in self.book_list:
+            if b.id == book.id:
+                msg = b.return_book()
+                self.save_books()
+                return msg
+        return "Book not found"
+
+    def find_book_by_id(self, book_id):
+        return next((b for b in self.book_list if b.id == book_id), None)
+
+    def find_user_by_id(self, user_id):
+        return next((u for u in self.user_list if u.user_id == user_id), None)
+
+    def authenticate_user(self, user_id, password):
+        return next((u for u in self.user_list if u.user_id == user_id and u.password == password), None)
+
+    def load_books(self):
+        self.book_list.clear()
+        if os.path.exists(self.books_file):
+            with open(self.books_file, 'r') as f:
+                lines = f.readlines()
+                seen_ids = set()
+                for line in lines:
+                    if line.strip():
+                        book = Book.from_line(line)
+                        if book.id not in seen_ids:
+                            self.book_list.append(book)
+                            seen_ids.add(book.id)
+
+    def save_books(self):
+        with open(self.books_file, 'w') as f:
+            unique_books = {book.id: book for book in self.book_list}
+            for book in unique_books.values():
+                f.write(book.to_line())
+
+    def load_users(self):
+        self.user_list.clear()
+        if os.path.exists(self.users_file):
+            with open(self.users_file, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        user = User.from_line(line)
+                        self.user_list.append(user)
+
+    def save_users(self):
+        with open(self.users_file, 'w') as f:
+            for user in self.user_list:
+                f.write(user.to_line())
+
+    def display_books(self):
+        print("\nLibrary Books:")
+        unique_ids = set()
+        for book in self.book_list:
+            if book.id not in unique_ids:
+                status = "Available" if book.available else "Not Available"
+                print(f"{book.id} - {book.title} by {book.author} | {status}")
+                unique_ids.add(book.id)
+        print()
+
+
+def setup_library():
+    library = Library()
+
+    if not library.book_list:
+        default_books = [
+            Book("1423", "Harry Potter", "J.K Rowling", "Fantasy"),
+            Book("5867", "Naalukett", "M.T Vasudevan Nair", "Classic Fiction"),
+            Book("7809", "The God of Small Things", "Arundhati Roy", "Fiction")
+        ]
+        for book in default_books:
+            library.add_book(book)
+
+    if not library.user_list:
+        default_users = [
+            User("Reshma", "u1", "pa1"),
+            User("Preetha", "u2", "pa2"),
+            User("Anu", "u3", "pa3")
+        ]
+        for user in default_users:
+            library.add_user(user)
+
+    return library
+
+
+def user_session(user, library):
+    while True:
+        print(f"\n--- Welcome, {user.name}! ---")
+        print("1. View All Books")
+        print("2. View Borrowed Books")
+        print("3. Borrow a Book")
+        print("4. Return a Book")
+        print("5. Logout")
+
+        choice = input("Enter choice: ").strip()
+
+        if choice == '1':
+            library.display_books()
+
+        elif choice == '2':
+            print("\nYour Borrowed Books:")
+            if not user.borrowed_books:
+                print("You haven't borrowed any books.")
+            else:
+                for book_id in user.borrowed_books:
+                    book = library.find_book_by_id(book_id)
+                    if book:
+                        print(f"{book.id} - {book.title} by {book.author}")
+            print()
+
+        elif choice == '3':
+            library.display_books()
+            book_id = input("Enter Book ID to borrow: ").strip()
+            book = library.find_book_by_id(book_id)
+            if book:
+                user.borrow_book(book, library)
+                library.save_users()
+            else:
+                print("Invalid book ID.")
+
+        elif choice == '4':
+            if not user.borrowed_books:
+                print("You haven't borrowed any books.")
+            else:
+                for book_id in user.borrowed_books:
+                    book = library.find_book_by_id(book_id)
+                    print(f"{book.id} - {book.title} by {book.author}")
+                book_id = input("Enter Book ID to return: ").strip()
+                book = library.find_book_by_id(book_id)
+                if book:
+                    user.return_book(book, library)
+                    library.save_users()
+                else:
+                    print("Invalid book ID.")
+
+        elif choice == '5':
+            print(f"Logging out {user.name}...\n")
+            break
+        else:
+            print("Invalid choice. Try again.")
+
+
+def main():
+    library = setup_library()
+    print("...................... Welcome to the Library Management System .......................\n")
+
+    while True:
+        user_id = input("Enter User ID: ").strip()
+        password = input("Enter Password: ").strip()
+
+        user = library.authenticate_user(user_id, password)
+
+        if user:
+            user_session(user, library)
+        else:
+            print("Invalid credentials. Try again.\n")
+
+
+main()
