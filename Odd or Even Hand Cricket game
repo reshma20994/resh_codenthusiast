@@ -1,0 +1,55 @@
+import random
+
+def toss():
+    print("........... Toss Time! ..................")
+    user = int(input(("Enter a number (1-10): ")))
+    computer = random.randint(1, 10)
+    print(f"User chose: {user} \nComputer chose: {computer}")
+    
+    total = user + computer
+    choice = input("Choose 'even' or 'odd': ").lower()
+    result = 'even' if total % 2 == 0 else 'odd'
+
+    if choice == result:
+        print("User wins the toss!")
+        return True
+    else:
+        print("Computer wins the toss!")
+        return False
+
+def play(overs, runs):
+    for over in range(1, overs + 1):
+        print(f"\nOver {over}:")
+        for ball in range(1, 7):
+            bat = int(input("Batter, enter your number (1-10): "))
+            bowl = random.randint(1, 10)
+            print(f"Ball {ball}: Bowler chose {bowl}")
+
+            if bat == bowl:
+                print("Out!!!!!")
+                return runs, True
+            else:
+                score = min(bat, bowl)
+                runs += score
+                print(f"You scored {score} runs. Total: {runs}")
+    return runs, False
+
+def main():
+    print("............. Let's play Odd or Even Hand Cricket Game! ....................")
+    print("\nSelect format:\n1. Test (5 overs)\n2. T20 (20 overs)\n3. ODI (50 overs)")
+    
+    choice = int(input(("Enter choice (1-3): ")))
+    overs = {1: 5, 2: 20, 3: 50}[choice]
+    
+    runs = 0
+    batter_out = False
+
+    batting_first = "user" if toss() else "computer"
+    print(f"{batting_first} chose to bat.")
+
+    runs, batter_out = play(overs, runs)
+
+    print("............ Game Over! .............")
+    print(f"\nFinal Score: {runs}")
+
+main()
