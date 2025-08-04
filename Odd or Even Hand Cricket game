@@ -1,5 +1,4 @@
 import random
-
 def toss():
     print("........... Toss Time! ..................")
     user = int(input(("Enter a number (1-10): ")))
